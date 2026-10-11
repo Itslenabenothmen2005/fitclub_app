@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'config/app_config.dart';
-import 'screens/auth/login_screen.dart';
+import 'screens/admin/admin_shell.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -17,7 +17,9 @@ class FitClubApp extends StatelessWidget {
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: const LoginScreen(),
+      // TEMPORAIRE : on ouvre directement l'espace Administrateur pour le
+      // tester sans backend. Plus tard : home: const AuthGate() (Firebase).
+      home: const AdminShell(),
     );
   }
 }
