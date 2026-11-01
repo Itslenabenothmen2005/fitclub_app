@@ -35,6 +35,7 @@ class UserProfile {
     required this.actif,
   });
 
+  //fromMap convertit un document Firestore en objet.
   factory UserProfile.fromMap(String uid, Map<String, dynamic> d) {
     return UserProfile(
       uid: uid,
@@ -43,6 +44,7 @@ class UserProfile {
       email: d['email'] as String? ?? '',
       role: UserRole.fromString(d['role'] as String?),
       actif: d['actif'] as bool? ?? true,
+      // un champ manquant ne fait pas planter l’app.(valeur de secours (?? '', ?? true))
     );
   }
 }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+//le bouton principal. Pendant le chargement, il se désactive et affiche un cercle de progression
+
+
+
 class PrimaryButton extends StatelessWidget {
   const PrimaryButton({
     super.key,

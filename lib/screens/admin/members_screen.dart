@@ -86,7 +86,7 @@ class _MembersScreenState extends State<MembersScreen> {
     _snack('Adhérent supprimé.');
   }
 
-  void _showDetails(Adherent a) {
+  void _showDetails(Adherent a) {//Fiche de détails au clic
     final plan = _store.abonnementById(a.abonnementId);
     final fin = _store.finAbonnement(a);
     showDetailSheet(
@@ -139,7 +139,7 @@ class _MembersScreenState extends State<MembersScreen> {
         ],
       ),
       onTap: () => _showDetails(a),
-      actions: [
+      actions: [//Menu des 3 points :
         ItemAction(
             label: 'Modifier',
             icon: Icons.edit_outlined,

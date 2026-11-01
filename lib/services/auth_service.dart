@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+import '../models/user_profile.dart'; // NOUVEAU : pour UserRole
 import 'user_service.dart';
 
 class AuthFailure implements Exception {
@@ -18,6 +19,7 @@ class AuthService {
   final UserService _userService;
   FirebaseAuth get _auth => FirebaseAuth.instance;
 
+  //authStateChanges est un flux qui indique si quelqu'un est connecté ou non.
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   /// Renvoie true si la connexion a réellement réussi.
@@ -34,6 +36,7 @@ class AuthService {
     required String nom,
     required String email,
     required String password,
+    required UserRole role, // NOUVEAU : le rôle choisi à l'inscription
   }) {
     return _guard(() async {
       final cred = await _auth.createUserWithEmailAndPassword(
@@ -41,28 +44,38 @@ class AuthService {
       final user = cred.user!;
       await user.updateDisplayName('$prenom $nom');
       await _userService.createAdherentProfile(
-          user: user, prenom: prenom.trim(), nom: nom.trim());
+        user: user,
+        prenom: prenom.trim(),
+        nom: nom.trim(),
+        role: role, // NOUVEAU : on enregistre le rôle choisi
+      );
       return true;
     });
   }
 
   /// true = connecté, false = l'utilisateur a fermé la fenêtre Google.
-  Future<bool> signInWithGoogle() {
+  Future<bool> signInWithGoogle({
+    UserRole role = UserRole.adherent, // NOUVEAU : adhérent par défaut
+  }) {
     return _guard(() async {
       final provider = GoogleAuthProvider()..addScope('email');
       try {
         final cred = kIsWeb
-            ? await _auth.signInWithPopup(provider)
-            : await _auth.signInWithProvider(provider);
+            ? await _auth.signInWithPopup(provider) //signInWithPopup sur le web
+            : await _auth.signInWithProvider(provider); //signInWithProvider sur mobile
 
-        // Premier passage avec Google = inscription publique = adhérent.
+        // Le rôle est enregistré seulement à la toute première connexion.
         if (cred.additionalUserInfo?.isNewUser ?? false) {
           final user = cred.user!;
           final parts = (user.displayName ?? '').trim().split(' ');
           final prenom = parts.first;
           final nom = parts.length > 1 ? parts.sublist(1).join(' ') : '';
           await _userService.createAdherentProfile(
-              user: user, prenom: prenom, nom: nom);
+            user: user,
+            prenom: prenom,
+            nom: nom,
+            role: role, // NOUVEAU
+          );
         }
         return true;
       } on FirebaseAuthException catch (e) {
@@ -78,6 +91,7 @@ class AuthService {
     });
   }
 
+  //sendPasswordReset envoie l'e-mail de réinitialisation
   Future<void> sendPasswordReset(String email) {
     return _guard(() => _auth.sendPasswordResetEmail(email: email.trim()));
   }
@@ -100,6 +114,7 @@ class AuthService {
     }
   }
 
+  //_messageFor traduit les codes d'erreur en phrases françaises
   String _messageFor(String code) {
     switch (code) {
       case 'invalid-email':
@@ -108,7 +123,7 @@ class AuthService {
         return 'Ce compte a été désactivé. Contactez la salle de sport.';
       case 'user-not-found':
       case 'wrong-password':
-      case 'invalid-credential':
+      case 'invalid-credential': // même message, pour ne pas révéler si l'e-mail existe
         return 'E-mail ou mot de passe incorrect.';
       case 'email-already-in-use':
         return 'Un compte existe déjà avec cette adresse e-mail.';

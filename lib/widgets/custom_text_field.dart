@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+
+
+
 class CustomTextField extends StatefulWidget {
   const CustomTextField({
     super.key,
@@ -35,7 +38,7 @@ class CustomTextField extends StatefulWidget {
 }
 
 class _CustomTextFieldState extends State<CustomTextField> {
-  bool _obscure = true;
+  bool _obscure = true;//(bouton œil des mots de passe)
 
   @override
   Widget build(BuildContext context) {

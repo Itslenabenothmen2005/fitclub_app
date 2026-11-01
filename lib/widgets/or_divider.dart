@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+//le séparateur « ou continuer avec ».
+
+
 
 class OrDivider extends StatelessWidget {
   const OrDivider({super.key, required this.label});

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
+import '../../models/user_profile.dart'; // NOUVEAU : pour UserRole
 import '../../services/auth_service.dart';
+import '../../theme/app_theme.dart';      // NOUVEAU : pour AppColors
 import '../../utils/validators.dart';
 import '../../widgets/auth_scaffold.dart';
 import '../../widgets/custom_text_field.dart';
@@ -10,6 +12,8 @@ import '../../widgets/google_button.dart';
 import '../../widgets/or_divider.dart';
 import '../../widgets/primary_button.dart';
 
+//avec cinq champs
+//La confirmation compare au mot de passe via Validators.confirm
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
 
@@ -28,6 +32,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _isLoading = false;
   String? _error;
+
+  // NOUVEAU : rôle choisi par l'utilisateur (adhérent par défaut)
+  UserRole _role = UserRole.adherent;
 
   @override
   void dispose() {
@@ -70,8 +77,48 @@ class _SignUpScreenState extends State<SignUpScreen> {
         nom: _nomCtrl.text,
         email: _emailCtrl.text,
         password: _passwordCtrl.text,
+        role: _role, // NOUVEAU : le rôle choisi part vers Firestore
       ),
       'Compte créé avec succès !',
+    );
+  }
+
+  // NOUVEAU : une ligne de choix de rôle (carte verte quand sélectionnée)
+  Widget _roleOption(UserRole value, IconData icon) {
+    final selected = _role == value;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      // On change le rôle seulement si on n'est pas en train de charger
+      onTap: _isLoading ? null : () => setState(() => _role = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          // Fond vert clair si sélectionné, blanc sinon
+          color: selected
+              ? AppColors.primary.withValues(alpha: 0.25)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppColors.accent : AppColors.border,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppColors.accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(value.label,
+                  style: Theme.of(context).textTheme.labelLarge),
+            ),
+            // Le petit rond de sélection
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: selected ? AppColors.accent : AppColors.textSecondary,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -146,12 +193,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
               validator: (v) => Validators.confirm(v, _passwordCtrl.text),
               onSubmitted: (_) => _submit(),
             ),
-            const SizedBox(height: 12),
-            Text(
-              "Votre compte sera créé en tant qu'adhérent. Les comptes "
-                  "coach et administrateur sont créés par la salle de sport.",
-              style: theme.textTheme.bodySmall,
-            ),
+
+            // NOUVEAU : choix du rôle (remplace l'ancien texte
+            // "Votre compte sera créé en tant qu'adhérent...")
+            const SizedBox(height: 16),
+            Text("Je m'inscris en tant que :",
+                style: theme.textTheme.labelLarge),
+            const SizedBox(height: 8),
+            _roleOption(UserRole.adherent, Icons.person_outline),
+            const SizedBox(height: 8),
+            _roleOption(UserRole.coach, Icons.sports_gymnastics),
+
             const SizedBox(height: 20),
             PrimaryButton(
                 label: 'Créer mon compte',
@@ -162,8 +214,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
             const SizedBox(height: 16),
             GoogleButton(
               enabled: !_isLoading,
-              onPressed: () =>
-                  _run(_authService.signInWithGoogle, 'Connexion réussie !'),
+              // NOUVEAU : Google reçoit aussi le rôle choisi
+              onPressed: () => _run(
+                    () => _authService.signInWithGoogle(role: _role),
+                'Connexion réussie !',
+              ),
             ),
             const SizedBox(height: 24),
             Wrap(

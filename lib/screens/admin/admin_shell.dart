@@ -8,7 +8,7 @@ import 'coaches_screen.dart';
 import 'dashboard_screen.dart';
 import 'members_screen.dart';
 import 'sessions_screen.dart';
-
+import '../../services/auth_service.dart';
 class _NavItem {
   const _NavItem(this.label, this.icon);
   final String label;
@@ -38,13 +38,11 @@ class _AdminShellState extends State<AdminShell> {
     setState(() => _index = i);
     Navigator.of(context).pop(); // ferme le menu
   }
-
+  // Déconnexion : on prévient Firebase, c'est tout.
+  // AuthGate écoute la connexion : dès qu'il n'y a plus personne
+  // de connecté, il affiche tout seul l'écran de connexion.
   void _logout() {
-    // Pour l'instant : simple retour à l'écran Login (pas de vraie session).
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
-    );
+    AuthService().signOut();
   }
 
   Widget _drawerHeader(BuildContext context) {

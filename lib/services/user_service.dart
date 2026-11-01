@@ -18,21 +18,23 @@ class UserService {
     );
   }
 
-  /// Inscription publique : le rôle est TOUJOURS adhérent.
-  /// Aucun mot de passe n'est stocké ici (Firebase Auth s'en charge).
+  /// Crée le profil dans Firestore.
+  /// Le paramètre "role" vient maintenant de l'écran d'inscription.
+  /// Par défaut = adhérent (utilisé par la connexion Google).
   Future<void> createAdherentProfile({
     required User user,
     required String prenom,
     required String nom,
+    UserRole role = UserRole.adherent, // <-- NOUVEAU
   }) {
     return _db.collection(AppConfig.usersCollection).doc(user.uid).set({
       'uid': user.uid,
       'prenom': prenom,
       'nom': nom,
       'email': user.email ?? '',
-      'role': UserRole.adherent.name,
+      'role': role.name, //MODIFIÉ : "adherent" ou "coach" dans Firestore
       'actif': true,
       'dateInscription': FieldValue.serverTimestamp(),
     });
   }
-}
+  }
