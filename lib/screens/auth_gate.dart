@@ -5,13 +5,16 @@ import '../models/user_profile.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import 'admin/admin_shell.dart';
+import 'adherent/adherent_shell.dart'; // MODIFIÉ : le nouveau cadre adhérent
 import 'auth/login_screen.dart';
+import 'coach/coach_home_screen.dart';
 
 /// AuthGate = "le portier" de l'application.
 /// Il décide quel écran afficher selon l'utilisateur connecté :
 ///  - personne de connecté  -> écran de connexion
 ///  - connecté en admin     -> espace administrateur
-///  - connecté autre rôle   -> message "bientôt disponible"
+///  - connecté en coach     -> espace coach
+///  - connecté en adhérent  -> espace adhérent
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -43,27 +46,31 @@ class AuthGate extends StatelessWidget {
                   body: Center(child: CircularProgressIndicator()));
             }
 
-            final role = profileSnapshot.data?.role;
+            final profile = profileSnapshot.data;
+            final role = profile?.role;
 
-            // Administrateur : on ouvre son espace.
+            // Selon le rôle lu dans Firestore, on ouvre le bon espace.
             if (role == UserRole.admin) return const AdminShell();
+            if (role == UserRole.coach) {
+              return CoachHomeScreen(profile: profile);
+            }
+            if (role == UserRole.adherent) {
+              return AdherentShell(profile: profile); // MODIFIÉ
+            }
 
-            // Adhérent ou coach : leurs espaces ne sont pas encore faits.
+            // Rôle inconnu ou profil pas encore créé : attente + déconnexion
             return Scaffold(
               body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Votre espace sera bientôt disponible.'),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () => AuthService().signOut(),
-                        child: const Text('Se déconnecter'),
-                      ),
-                    ],
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => AuthService().signOut(),
+                      child: const Text('Se déconnecter'),
+                    ),
+                  ],
                 ),
               ),
             );

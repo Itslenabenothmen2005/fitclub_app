@@ -145,8 +145,8 @@ class AdminStore extends ChangeNotifier {
  // Si la date de fin est avant aujourd’hui, l’abonnement est expiré.
 //  Sinon, il est actif.
 
-  bool estPassee(Seance s) => s.date.isBefore(today);
-
+  //compare le jour ET l'heure de début de la séance
+  bool estPassee(Seance s) => s.dateHeure.isBefore(DateTime.now());
   int nbSeancesDuCoach(String coachId) =>
       _seances.where((s) => s.coachId == coachId).length;
 
