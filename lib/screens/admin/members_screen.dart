@@ -96,7 +96,11 @@ class _MembersScreenState extends State<MembersScreen> {
         'E-mail': a.email,
         'Téléphone': a.telephone.isEmpty ? 'Non renseigné' : a.telephone,
         'Inscrit le': Formatters.date(a.dateInscription),
-        'Abonnement': plan?.type ?? 'Aucun',
+        'Abonnement': plan == null
+            ? 'Aucun'
+            : a.dureeAbonnementMois == null
+                ? plan.type
+                : '${plan.type} · ${a.dureeAbonnementMois} mois',
         if (fin != null) "Date d'expiration": Formatters.date(fin),
         'Statut du compte': a.actif ? 'Actif' : 'Désactivé',
       },
@@ -117,7 +121,7 @@ class _MembersScreenState extends State<MembersScreen> {
         ? 'Aucun abonnement'
         : fin == null
             ? plan.type
-            : "${plan.type} · jusqu'au ${Formatters.date(fin)}";
+            : "${plan.type}${a.dureeAbonnementMois == null ? '' : ' · ${a.dureeAbonnementMois} mois'} · jusqu'au ${Formatters.date(fin)}";
 
     return AdminItemCard(
       leading: InitialsAvatar(text: Formatters.initials(a.prenom, a.nom)),

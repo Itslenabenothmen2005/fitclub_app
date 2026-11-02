@@ -19,6 +19,7 @@ class Adherent {
   final String telephone;
   final DateTime dateInscription;
   final String? abonnementId;
+  final int? dureeAbonnementMois;
   final DateTime? dateDebutAbonnement;
   final bool actif;
 
@@ -32,6 +33,7 @@ class Adherent {
     required this.abonnementId,
     required this.dateDebutAbonnement,
     required this.actif,
+    this.dureeAbonnementMois,
   });
 
   String get nomComplet => '$prenom $nom';
@@ -44,13 +46,14 @@ class Adherent {
     telephone: telephone,
     dateInscription: dateInscription,
     abonnementId: abonnementId,
+    dureeAbonnementMois: dureeAbonnementMois,
     dateDebutAbonnement: dateDebutAbonnement,
     actif: value,
   );
 
 
   //transformer une fiche Firestore en objet Adherent
-  /// Document Firestore -> objet Adherent.
+
   factory Adherent.fromMap(String id, Map<String, dynamic> d) => Adherent(
     id: id,
     prenom: d['prenom'] as String? ?? '',
@@ -61,6 +64,8 @@ class Adherent {
     (d['dateInscription'] as Timestamp?)?.toDate() ?? DateTime.now(),
     // Ces deux champs peuvent être absents (adhérent sans abonnement) : null.
     abonnementId: d['abonnementId'] as String?,
+    dureeAbonnementMois:
+        (d['dureeAbonnementMois'] as num?)?.toInt(),
     dateDebutAbonnement:
     (d['dateDebutAbonnement'] as Timestamp?)?.toDate(),
     actif: d['actif'] as bool? ?? true,
@@ -74,6 +79,7 @@ class Adherent {
     'telephone': telephone,
     'dateInscription': Timestamp.fromDate(dateInscription),
     'abonnementId': abonnementId,
+    'dureeAbonnementMois': dureeAbonnementMois,
     'dateDebutAbonnement': dateDebutAbonnement == null
         ? null
         : Timestamp.fromDate(dateDebutAbonnement!),

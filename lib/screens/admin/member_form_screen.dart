@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../data/admin_store.dart';
+import '../../models/abonnement.dart';
 import '../../models/adherent.dart';
 import '../../utils/formatters.dart';
 import '../../utils/number_validators.dart';
@@ -26,16 +27,34 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _store = AdminStore.instance;
 
-  late final _prenomCtrl = TextEditingController(text: widget.adherent?.prenom ?? '');
+  late final _prenomCtrl = TextEditingController(
+    text: widget.adherent?.prenom ?? '',
+  );
   late final _nomCtrl = TextEditingController(text: widget.adherent?.nom ?? '');
-  late final _emailCtrl = TextEditingController(text: widget.adherent?.email ?? '');
-  late final _telCtrl = TextEditingController(text: widget.adherent?.telephone ?? '');
+  late final _emailCtrl = TextEditingController(
+    text: widget.adherent?.email ?? '',
+  );
+  late final _telCtrl = TextEditingController(
+    text: widget.adherent?.telephone ?? '',
+  );
   late DateTime? _dateDebut = widget.adherent?.dateDebutAbonnement;
   late final _dateCtrl = TextEditingController(
-      text: _dateDebut == null ? '' : Formatters.date(_dateDebut!));
+    text: _dateDebut == null ? '' : Formatters.date(_dateDebut!),
+  );
   late String _abonnementId = widget.adherent?.abonnementId ?? _none;
+  late int? _dureeAbonnementMois = widget.adherent?.dureeAbonnementMois;
 
   bool get _isEdit => widget.adherent != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final plan = _store.abonnementById(_abonnementId);
+    final tariffs = _tariffsFor(plan);
+    if (_dureeAbonnementMois == null && tariffs.isNotEmpty) {
+      _dureeAbonnementMois = tariffs.first.dureeMois;
+    }
+  }
 
   @override
   void dispose() {
@@ -65,24 +84,36 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     final hasPlan = _abonnementId != _none;
-    _store.saveAdherent(Adherent(
-      id: widget.adherent?.id ?? _store.newId('adh'),
-      prenom: _prenomCtrl.text.trim(),
-      nom: _nomCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      telephone: _telCtrl.text.trim(),
-      dateInscription: widget.adherent?.dateInscription ?? DateTime.now(),
-      abonnementId: hasPlan ? _abonnementId : null,
-      dateDebutAbonnement: hasPlan ? _dateDebut : null,
-      actif: widget.adherent?.actif ?? true,
-    ));
-    Navigator.of(context).pop(_isEdit ? 'Adhérent modifié.' : 'Adhérent ajouté.');
+    _store.saveAdherent(
+      Adherent(
+        id: widget.adherent?.id ?? _store.newId('adh'),
+        prenom: _prenomCtrl.text.trim(),
+        nom: _nomCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        telephone: _telCtrl.text.trim(),
+        dateInscription: widget.adherent?.dateInscription ?? DateTime.now(),
+        abonnementId: hasPlan ? _abonnementId : null,
+        dureeAbonnementMois: hasPlan ? _dureeAbonnementMois : null,
+        dateDebutAbonnement: hasPlan ? _dateDebut : null,
+        actif: widget.adherent?.actif ?? true,
+      ),
+    );
+    Navigator.of(context)
+        .pop(_isEdit ? 'Adhérent modifié.' : 'Adhérent ajouté.');
   }
 
   @override
   Widget build(BuildContext context) {
     final plans = _store.abonnements;
     final hasPlan = _abonnementId != _none;
+    final selectedPlan = hasPlan ? _store.abonnementById(_abonnementId) : null;
+    final availableTariffs = _tariffsFor(selectedPlan);
+    final selectedDuration =
+        availableTariffs.any(
+          (tariff) => tariff.dureeMois == _dureeAbonnementMois,
+        )
+        ? _dureeAbonnementMois
+        : null;
 
     return FormScaffold(
       title: _isEdit ? "Modifier l'adhérent" : 'Nouvel adhérent',
@@ -91,8 +122,10 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('* Champs obligatoires',
-                style: Theme.of(context).textTheme.bodySmall),
+            Text(
+              '* Champs obligatoires',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
             const SizedBox(height: 16),
             CustomTextField(
               label: 'Prénom',
@@ -133,11 +166,40 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
               icon: Icons.card_membership_outlined,
               value: _abonnementId,
               items: [_none, ...plans.map((p) => p.id)],
-              itemLabel: (id) =>
-                  id == _none ? 'Aucun abonnement' : _store.abonnementById(id)?.type ?? '',
-              onChanged: (v) => setState(() => _abonnementId = v ?? _none),
+              itemLabel: (id) => id == _none
+                  ? 'Aucun abonnement'
+                  : _store.abonnementById(id)?.type ?? '',
+              onChanged: (v) => setState(() {
+                _abonnementId = v ?? _none;
+                final tariffs = _tariffsFor(
+                  _store.abonnementById(_abonnementId),
+                );
+                _dureeAbonnementMois = tariffs.isEmpty
+                    ? null
+                    : tariffs.first.dureeMois;
+              }),
             ),
             if (hasPlan) ...[
+              const SizedBox(height: 16),
+              AppDropdown<int>(
+                label: 'Durée de l’abonnement',
+                icon: Icons.calendar_month_outlined,
+                value: selectedDuration,
+                items: availableTariffs
+                    .map((tariff) => tariff.dureeMois)
+                    .toList(),
+                itemLabel: (months) {
+                  final tariff = availableTariffs.firstWhere(
+                    (item) => item.dureeMois == months,
+                  );
+                  return '${tariff.dureeLabel} · ${Formatters.price(tariff.prix ?? 0)}';
+                },
+                validator: (value) => value == null
+                    ? 'Aucune durée tarifée disponible pour cet abonnement.'
+                    : null,
+                onChanged: (value) =>
+                    setState(() => _dureeAbonnementMois = value),
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _dateCtrl,
@@ -162,5 +224,11 @@ class _MemberFormScreenState extends State<MemberFormScreen> {
         ),
       ),
     );
+  }
+
+  List<TarifAbonnement> _tariffsFor(Abonnement? plan) {
+    if (plan == null) return const [];
+    if (plan.isCategory) return plan.tarifsMensuels;
+    return [TarifAbonnement(dureeMois: plan.dureeMois, prix: plan.prix)];
   }
 }

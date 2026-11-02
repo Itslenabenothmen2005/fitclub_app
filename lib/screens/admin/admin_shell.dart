@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import '../../config/app_config.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/admin/admin_app_bar.dart';
-import '../auth/login_screen.dart';
+import '../../services/auth_service.dart';
 import 'coaches_screen.dart';
 import 'dashboard_screen.dart';
 import 'members_screen.dart';
 import 'sessions_screen.dart';
-import '../../services/auth_service.dart';
+import 'subscriptions_screen.dart';
+
 class _NavItem {
   const _NavItem(this.label, this.icon);
   final String label;
@@ -136,20 +137,9 @@ class _AdminShellState extends State<AdminShell> {
           MembersScreen(),
           CoachesScreen(),
           SessionsScreen(),
-          _SubscriptionsPlaceholder(),
+          SubscriptionsScreen(),
         ],
       ),
-    );
-  }
-}
-
-class _SubscriptionsPlaceholder extends StatelessWidget {
-  const _SubscriptionsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Écran des abonnements indisponible'),
     );
   }
 }

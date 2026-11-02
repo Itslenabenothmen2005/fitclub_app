@@ -1,17 +1,27 @@
-# fitclub
+# FitClub
 
-A new Flutter project.
+FitClub is a Flutter application using Firebase Authentication and Cloud
+Firestore.
 
-## Getting Started
+## Admin subscription categories
 
-This project is a starting point for a Flutter application.
+The Admin > Abonnements screen stores each category in `abonnements`. Category
+documents use `isCategory: true`, include four `formules` (1, 3, 6 and 12
+months), and can include `horaires`, `description`, `imageAsset` and `imageUrl`.
+The six default categories start with editable demonstration prices.
 
-A few resources to get you started if this is your first Flutter project:
+Defaults are initialized transactionally when the Abonnements screen loads.
+The persistent registry at `configuration/subscriptionCategories` tracks
+intentionally deleted default IDs so reopening the screen does not recreate
+them. Missing defaults are repaired without replacing existing category
+content. Existing single-duration subscription documents remain readable and
+manageable. Members can select a configured duration; the selected months are
+stored as `dureeAbonnementMois` on the member document. Older member records
+continue using the duration on their referenced legacy subscription.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Selecting a device image uploads it to Firebase Storage at
+`abonnements/{subscriptionId}/image`. The Firebase app options include a Storage
+bucket, but Storage security rules must also be configured in Firebase to allow
+authorized administrators to upload images. Configure and verify restrictive
+admin-only rules before enabling uploads; no permissive rules are bundled with
+the application.
