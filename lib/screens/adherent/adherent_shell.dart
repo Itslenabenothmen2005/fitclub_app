@@ -6,9 +6,9 @@ import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/adherent/adherent_action.dart'; // une action = nom + icône
 import '../../widgets/adherent/bientot_disponible.dart'; // page provisoire
-import '../../widgets/admin/admin_app_bar.dart'; // la barre verte du haut
 import 'dashboard_screen.dart'; // page 0 : tableau de bord
 import 'reserver_seance_screen.dart'; // page 1 : réservation
+import 'adherent_abonnements_screen.dart'; // page 6 : abonnements
 
 /// Cadre de l'espace ADHÉRENT : barre verte + menu latéral + pages.
 /// C'est le même principe que AdminShell : le cadre reste, et seule
@@ -27,6 +27,10 @@ class _AdherentShellState extends State<AdherentShell> {
   // Numéro de la page affichée (0 = tableau de bord)
   int _index = 0;
 
+  // NOUVEAU : historique des pages déjà visitées.
+  // Sert au bouton Retour : on revient à la page d'avant.
+  final List<int> _historique = [];
+
   // Les éléments du MENU. Leur ORDRE doit être exactement le même que
   // celui des pages dans l'IndexedStack plus bas :
   // le 1er élément = la 1re page, le 2e = la 2e page, etc.
@@ -43,9 +47,25 @@ class _AdherentShellState extends State<AdherentShell> {
     AdherentAction('Mon profil', Icons.person_outline),
   ];
 
+  // NOUVEAU : change de page ET mémorise la page quittée.
+  void _changerPage(int i) {
+    if (i == _index) return; // déjà sur cette page : rien à faire
+    setState(() {
+      _historique.add(_index); // on retient d'où l'on vient
+      _index = i;
+    });
+  }
+
+  // NOUVEAU : bouton Retour -> page d'avant, ou tableau de bord s'il n'y en a pas.
+  void _retour() {
+    setState(() {
+      _index = _historique.isNotEmpty ? _historique.removeLast() : 0;
+    });
+  }
+
   // Choix dans le MENU : on change de page ET on ferme le menu.
   void _select(int i) {
-    setState(() => _index = i); // setState = "redessine l'écran"
+    _changerPage(i); // MODIFIÉ : mémorise la page quittée
     Navigator.of(context).pop(); // ferme le menu latéral
   }
 
@@ -53,7 +73,7 @@ class _AdherentShellState extends State<AdherentShell> {
   // (Pas de pop() ici : le menu n'est pas ouvert, et un pop()
   // fermerait l'écran entier.)
   void _goTo(int i) {
-    setState(() => _index = i);
+    _changerPage(i); // MODIFIÉ : mémorise la page quittée
   }
 
   // Déconnexion : on prévient Firebase, c'est tout.
@@ -101,88 +121,138 @@ class _AdherentShellState extends State<AdherentShell> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      // Barre verte du haut : son titre change selon la page affichée
-      appBar: adminAppBar(_items[_index].label),
-
-      // ----- Menu latéral (on l'ouvre avec l'icône ☰) -----
-      drawer: Drawer(
-        child: Column(
-          children: [
-            _drawerHeader(context),
-            // Expanded + ListView : la liste du menu peut défiler
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(12),
-                children: [
-                  // On fabrique une ligne de menu pour chaque élément de _items
-                  for (var i = 0; i < _items.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: ListTile(
-                        leading: Icon(_items[i].icon),
-                        title: Text(_items[i].label,
-                            style: const TextStyle(fontSize: 16)),
-                        // La page actuelle est mise en vert dans le menu
-                        selected: i == _index,
-                        selectedColor: AppColors.primaryDark,
-                        selectedTileColor:
-                        AppColors.primary.withValues(alpha: 0.25),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        onTap: () => _select(i),
-                      ),
-                    ),
-                ],
-              ),
+  // NOUVEAU : barre verte du haut avec la flèche de retour.
+  // La flèche est visible sur toutes les pages SAUF le tableau de bord (0).
+  // Elle remplace l'ancien appBar: adminAppBar(...)
+  PreferredSizeWidget _appBar() {
+    return AppBar(
+      backgroundColor: AppColors.primary,
+      foregroundColor: AppColors.primaryDark,
+      // Le ☰ (menu) reste à gauche automatiquement ; le titre vient après.
+      titleSpacing: 0,
+      title: Row(
+        children: [
+          // Flèche de retour : seulement si on n'est pas sur le tableau de bord
+          if (_index != 0)
+            IconButton(
+              tooltip: 'Retour',
+              icon: const Icon(Icons.arrow_back),
+              onPressed: _retour,
             ),
-            const Divider(height: 1),
-            // Bouton de déconnexion, toujours en bas du menu
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: ListTile(
-                  leading: const Icon(Icons.logout, color: AppColors.error),
-                  title: const Text('Se déconnecter',
-                      style: TextStyle(fontSize: 16, color: AppColors.error)),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  onTap: _logout,
+          // Titre : change selon la page affichée
+          Expanded(
+            child: Padding(
+              // petit espace à gauche quand il n'y a pas de flèche
+              padding: EdgeInsets.only(left: _index == 0 ? 16 : 0),
+              child: Text(
+                _items[_index].label,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryDark,
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // NOUVEAU : PopScope = gère le bouton Retour du TÉLÉPHONE.
+    // Sur une autre page que le tableau de bord, il revient en arrière
+    // dans l'appli au lieu de la fermer.
+    return PopScope(
+      canPop: _index == 0, // sur le tableau de bord : comportement normal
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _retour();
+      },
+      child: Scaffold(
+        // Barre verte du haut : son titre change selon la page affichée
+        appBar: _appBar(), // MODIFIÉ : remplace adminAppBar(...)
+
+        // ----- Menu latéral (on l'ouvre avec l'icône ☰) -----
+        drawer: Drawer(
+          child: Column(
+            children: [
+              _drawerHeader(context),
+              // Expanded + ListView : la liste du menu peut défiler
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(12),
+                  children: [
+                    // On fabrique une ligne de menu pour chaque élément de _items
+                    for (var i = 0; i < _items.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: ListTile(
+                          leading: Icon(_items[i].icon),
+                          title: Text(_items[i].label,
+                              style: const TextStyle(fontSize: 16)),
+                          // La page actuelle est mise en vert dans le menu
+                          selected: i == _index,
+                          selectedColor: AppColors.primaryDark,
+                          selectedTileColor:
+                          AppColors.primary.withValues(alpha: 0.25),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          onTap: () => _select(i),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              // Bouton de déconnexion, toujours en bas du menu
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: ListTile(
+                    leading:
+                    const Icon(Icons.logout, color: AppColors.error),
+                    title: const Text('Se déconnecter',
+                        style:
+                        TextStyle(fontSize: 16, color: AppColors.error)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    onTap: _logout,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ----- Les pages -----
+        // IndexedStack : contient toutes les pages mais n'en affiche qu'UNE,
+        // celle dont le numéro est _index.
+        // L'ordre est le même que dans _items (voir plus haut).
+        // Quand une fonctionnalité est prête, on remplace la ligne
+        // "BientotDisponible(...)" par son écran.
+        body: IndexedStack(
+          index: _index,
+          children: [
+            // 0 : tableau de bord (on lui donne le profil, le menu et _goTo)
+            AdherentDashboardScreen(
+              profile: widget.profile,
+              items: _items,
+              onOpen: _goTo,
+            ),
+            const ReserverSeanceScreen(), // 1 : FAIT
+            const MesReservationsScreen(), // 2 : FAIT
+            const BientotDisponible("Programme d'entraînement"), // 3
+            const BientotDisponible("Historique d'activités"), // 4
+            const BientotDisponible('Infos des coachs'), // 5
+            const AdherentAbonnementsScreen(), // 6 : FAIT
+            const BientotDisponible('Notifications'), // 7
+            const BientotDisponible('Chatbot'), // 8
+            const BientotDisponible('Mon profil'), // 9
           ],
         ),
-      ),
-
-      // ----- Les pages -----
-      // IndexedStack : contient toutes les pages mais n'en affiche qu'UNE,
-      // celle dont le numéro est _index.
-      // L'ordre est le même que dans _items (voir plus haut).
-      // Quand une fonctionnalité est prête, on remplace la ligne
-      // "BientotDisponible(...)" par son écran.
-      body: IndexedStack(
-        index: _index,
-        children: [
-          // 0 : tableau de bord (on lui donne le profil, le menu et _goTo)
-          AdherentDashboardScreen(
-            profile: widget.profile,
-            items: _items,
-            onOpen: _goTo,
-          ),
-          const ReserverSeanceScreen(), // 1 : FAIT
-          const MesReservationsScreen(), // 2 : FAIT
-          const BientotDisponible("Programme d'entraînement"), // 3
-          const BientotDisponible("Historique d'activités"), // 4
-          const BientotDisponible('Infos des coachs'), // 5
-          const BientotDisponible('Abonnements'), // 6
-          const BientotDisponible('Notifications'), // 7
-          const BientotDisponible('Chatbot'), // 8
-          const BientotDisponible('Mon profil'), // 9
-        ],
       ),
     );
   }

@@ -10,9 +10,10 @@ import '../../widgets/admin/avatars.dart';
 import '../../widgets/admin/confirm_dialog.dart';
 import '../../widgets/admin/empty_state.dart';
 import 'subscription_form_screen.dart';
+import '../adherent/paiement_screen.dart';
 
-class SubscriptionsScreen extends StatefulWidget {
-  const SubscriptionsScreen({super.key});
+class SubscriptionsScreen extends StatefulWidget {const SubscriptionsScreen({super.key, this.adherentMode = false});
+final bool adherentMode; // true = vue adhérent (lecture seule + Souscrire)
 
   @override
   State<SubscriptionsScreen> createState() => _SubscriptionsScreenState();
